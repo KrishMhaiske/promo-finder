@@ -59,7 +59,8 @@ with st.sidebar:
 tab_run, tab_view = st.tabs(["Run on new screenplays", "Browse saved results"])
 
 
-def show_results(result: dict):
+def show_results(result: dict, key: str = "view"):
+    """`key` keeps widgets unique when results are shown in both tabs at once."""
     m = result["meta"]
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Episodes", m["episodes_processed"])
@@ -81,10 +82,11 @@ def show_results(result: dict):
     reasons = result.get("posting_plan_reasons", {})
     st.dataframe(pd.DataFrame([{**row(by_id[i]), "why post first": reasons.get(i, "")}
                                for i in result["posting_plan"] if i in by_id]),
-                 hide_index=True, use_container_width=True)
+                 hide_index=True, width="stretch")
     st.subheader("All ranked promos")
-    st.dataframe(pd.DataFrame([row(r) for r in ranked]), hide_index=True, use_container_width=True)
-    pick = st.selectbox("Inspect a promo", [f"{r['rank']}. {r['id']} — {r['title']}" for r in ranked])
+    st.dataframe(pd.DataFrame([row(r) for r in ranked]), hide_index=True, width="stretch")
+    pick = st.selectbox("Inspect a promo", [f"{r['rank']}. {r['id']} — {r['title']}" for r in ranked],
+                        key=f"{key}_inspect")
     if pick:
         r = ranked[int(pick.split(".")[0]) - 1]
         st.markdown(f"**Why:** {r['why']}  \n**Judge:** {(r.get('scores') or {}).get('verdict')}  \n"
@@ -93,7 +95,8 @@ def show_results(result: dict):
     with st.expander(f"Rejected / duplicates ({len(result['rejected_or_duplicate'])})"):
         st.dataframe(pd.DataFrame([{"id": r["id"], "length": round(r["duration_sec"]), "issues": "; ".join(r["issues"])}
                                    for r in result["rejected_or_duplicate"]]), hide_index=True)
-    st.download_button("Download promos.json", json.dumps(result, indent=2, ensure_ascii=False), "promos.json")
+    st.download_button("Download promos.json", json.dumps(result, indent=2, ensure_ascii=False), "promos.json",
+                       key=f"{key}_download")
 
 
 with tab_run:
@@ -136,16 +139,16 @@ with tab_run:
                 st.stop()
         st.session_state["result"] = result
     if "result" in st.session_state:
-        show_results(st.session_state["result"])
+        show_results(st.session_state["result"], key="run")
 
 with tab_view:
     st.caption("Open a saved run: drop a promos.json from the raw outputs folder, or pick one found on disk.")
     up = st.file_uploader("promos.json", type=["json"], key="view_json")
     saved = sorted(Path("outputs").glob("*/promos.json"))
     if up is not None:
-        show_results(json.loads(up.read().decode("utf-8")))
+        show_results(json.loads(up.getvalue().decode("utf-8")), key="upload")
     elif saved:
         choice = st.selectbox("Saved run", saved, format_func=lambda p: p.parent.name)
-        show_results(json.loads(Path(choice).read_text(encoding="utf-8")))
+        show_results(json.loads(Path(choice).read_text(encoding="utf-8")), key="disk")
     else:
         st.info("No saved runs here. Upload a promos.json above.")
