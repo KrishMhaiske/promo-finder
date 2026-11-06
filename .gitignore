@@ -10,3 +10,6 @@ __pycache__/
 # outputs quote the confidential scripts - shared privately via Drive, not on public GitHub
 outputs/
 *.log
+
+# submitted separately as PDF (has personal details)
+docs/solution_doc.*
