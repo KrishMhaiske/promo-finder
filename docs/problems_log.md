@@ -17,3 +17,9 @@
 | 13 | Judge gave a 5/5 hook to openings with no line for 7–10s | Judge reads text and can't see footage | Code measures when the first spoken line lands and penalises/flags anything after 3s |
 | 14 | Batched run returns fewer promos per episode (~1 vs ~1.5) | Model does less work per episode in a long prompt | Trade-off accepted for the free tier; with a paid key, use `--batch-size 1` |
 | 15 | User's terminal said `run.py` not found | Command was run from `kuku_assignment` instead of `promo-finder` | Added the `cd promo-finder` step to the instructions |
+| 16 | A new Gemini key still hit the daily limit | The free quota is per Google Cloud *project*, not per key | Switched provider to Groq (only a `.env` change, which shows the model swap works) |
+| 17 | Groq: `llama-3.3-70b-versatile` returned 404 | Model retired; I had suggested it from memory | Listed the models on the key; using `openai/gpt-oss-120b` |
+| 18 | Groq allows only 8,000 tokens/minute, but our 5-episode batches are ~11k | Opposite limit shape to Gemini (Groq: 1,000 requests/day, small per-minute budget) | All prompt sizes are now `.env` settings (1 episode per call, judge 6 per call, montage capped at 40 moments, repair 3 per call). The code waits as long as Groq says when rate-limited |
+| 19 | `.env` changes were lost once | VS Code had the old file open and saved over the new one | Rewrote it; close `.env` in the editor before letting tools change it |
+| 20 | Code would have sent the Groq key to Google after switching back | Key lookup wasn't provider-specific | Each provider now reads only its own key |
+| 21 | Judge scores differ between models (gpt-oss gives hooks 2–3/5, flash-lite 4–5/5) | Each model calibrates differently | Compare the *order* within one run, never absolute scores across models |
