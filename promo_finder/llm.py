@@ -75,6 +75,7 @@ class LLM:
 
         retries = retries or max(8, 2 * len(self.chain))  # per-minute waits also use attempts
         last_err, idx = None, 0
+        bad_json: dict[str, int] = {}
         for attempt in range(retries):
             if not self.chain:  # every model hit its daily limit earlier in this run
                 raise RuntimeError(f"No models left (daily limits hit: {self.exhausted}). "
@@ -101,7 +102,11 @@ class LLM:
                     raise RuntimeError(f"Prompt too large for {model}'s per-minute token limit. Lower BATCH_EPISODES / "
                                        f"JUDGE_BATCH / MONTAGE_MAX_MOMENTS / REPAIR_BATCH in .env. ({msg[:200]})") from e
                 if "json_validate_failed" in msg or "tool_use_failed" in msg:
-                    print(f"  [llm] {model} returned invalid JSON; retrying")
+                    # some models keep failing the JSON format: after 2 failures, try the next model in the chain
+                    bad_json[model] = bad_json.get(model, 0) + 1
+                    if bad_json[model] >= 2 and len(self.chain) > 1:
+                        idx += 1
+                    print(f"  [llm] {model} returned invalid JSON; next try on {self.chain[idx % len(self.chain)]}")
                     time.sleep(2)
                     continue
                 if any(c in head for c in ("400", "404", "NOT_FOUND", "INVALID_ARGUMENT")):
