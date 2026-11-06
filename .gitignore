@@ -1,0 +1,12 @@
+# Kuku input pack is confidential - never commit screenplays
+*.txt
+!requirements.txt
+input/
+.env
+.llm_cache/
+__pycache__/
+.streamlit/secrets.toml
+
+# outputs quote the confidential scripts - shared privately via Drive, not on public GitHub
+outputs/
+*.log
