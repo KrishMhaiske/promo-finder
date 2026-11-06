@@ -23,3 +23,6 @@
 | 19 | `.env` changes were lost once | VS Code had the old file open and saved over the new one | Rewrote it; close `.env` in the editor before letting tools change it |
 | 20 | Code would have sent the Groq key to Google after switching back | Key lookup wasn't provider-specific | Each provider now reads only its own key |
 | 21 | Judge scores differ between models (gpt-oss gives hooks 2–3/5, flash-lite 4–5/5) | Each model calibrates differently | Compare the *order* within one run, never absolute scores across models |
+| 22 | Groq run stopped at Ep 41 of 50 | Groq also has a **daily token budget** per model; ~40 episodes × ~6k tokens used it up | Added fallback Groq models (`qwen3.8-27b`, `gpt-oss-20b`), each with its own budget; resumed from cache so the 40 finished episodes weren't re-billed |
+| 23 | After that, every remaining call crashed with "integer modulo by zero" | Bug: the code didn't handle an empty model list | Now stops with a clear message saying finished work is cached |
+| 24 | Episodes 41–44 and 46 were lost in the resumed run | Backup model `qwen3.8-27b` kept failing Groq's JSON check (`json_validate_failed`), and the code retried the same model 8 times | After 2 invalid-JSON replies the tool now moves to the next model; `gpt-oss-20b` (reliable JSON) goes first in the fallback list; resumed only the missing episodes |

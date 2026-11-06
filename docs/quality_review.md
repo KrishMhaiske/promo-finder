@@ -1,4 +1,37 @@
-# Quality review: hand check of the top 10 (run 2)
+# Quality review
+
+## Final run: run 3 (Groq `gpt-oss-120b` for Ep 1–41, `gpt-oss-20b` for Ep 42–50 and the judge)
+Hand check of the 10 clips in the posting plan, against the screenplay lines each one cuts.
+
+| Plan # | Clip | Hook ≤3s | Cliffhanger | Standalone | Verdict |
+|---|---|---|---|---|---|
+| 1 | Ep12 00:57.30–01:27.21 (30s): bare-hands-in-the-thorns ultimatum | ✅ line at 0.0s | ✅ "Tell me where the garden is." | ✅ | **Great**: tighter than run 2's version of the same scene |
+| 2 | Ep18 00:20.10–01:13.50 (53s): fire rescue | ✅ "Juliana! Get up!" at 0.7s | ✅ she runs *into* the fire for the ledger | ✅ | **Great**, but the AI's cliffhanger text ("beam crashes") doesn't match the script ending |
+| 3 | Ep16 00:14.30–00:52.20 (38s): catches the club, beats 3 thugs | ✅ action at 0.1s | ✅ "Gerald Harrington paid us!" | ✅ | **Great** |
+| 4 | Ep24 00:32.50–01:03.80 (31s): riding-crop strike | ✅ strike at 0.0s | ⚠️ a threat, not a question | ✅ | Good (a classic slap-style opener) |
+| 5 | Ep3 01:09.90–01:28.00 (18s): "Take your hands off her" | ✅ | ✅ the groom panics after the punch | ✅ | Good but short (accepted in the ±3s tolerance) |
+| 6 | Ep27 (20s, 2 segments): "This ring..." → doors burst open | ✅ | ✅ | ⚠️ which ring? | Good |
+| 7 | Ep30 (58s): villains plotting | ✅ | ⚠️ | ❌ no protagonist on screen, long | **Weak** |
+| 8 | Ep11 (26s, 3 segments): search → watch found | ⚠️ "A complaint is not proof" is softer than run 2's "stole my watch!" | ✅ | ✅ | Usable; run 2's cut was better |
+| 9 | Ep26 (29s): the ring is noticed | ❌ first line at 9.5s (visual only; flagged by code) | ✅ | ✅ | **Weak** opening |
+| 10 | Ep35 (45s, code-trimmed from 113s): mother finds him alive | ✅ | ✅ "the same men ruling Ashwood now" | ⚠️ | Usable |
+
+**Score: 6 good, 2 usable, 2 weak.** Run 2 scored 4 / 3 / 3.
+The spoiler filter worked: ranks 4–6 (Ep39, Ep41, Ep50, the Duke reveals) were held out of the plan automatically.
+
+### Run 2 vs run 3 (same pipeline, only `.env` changed)
+| | Run 2: Gemini flash-lite, 5 eps/call | Run 3: Groq gpt-oss, 1 ep/call |
+|---|---|---|
+| Promos ranked / episodes covered | 45 / 42 of 50 | **55 / 48 of 50** |
+| Clips needing code trimming | 21 | **6** |
+| Openings with no spoken line in first 3s | 8 | **5** |
+| Posting plan, episodes used | mostly late (11–41) | **spread out (3–35)** |
+| Hand check of plan (good / usable / weak) | 4 / 3 / 3 | **6 / 2 / 2** |
+| Calls / time | 14 / 91s | ~60 / ~45 min (Groq allows only 8k tokens per minute) |
+
+Caveats: run 3 mixes models (Groq's daily token budget ran out), and judge scores aren't comparable across models (gpt-oss scores hooks ~3/5, flash-lite ~4/5). Compare the *order* within a run, not the absolute scores.
+
+## Earlier run: hand check of the top 10 (run 2, Gemini flash-lite)
 
 **How it was checked:** each of the top 10 picks in run 2 (`outputs/run2_batched_flash-lite`, model `gemini-3.5-flash-lite`) was read against the screenplay lines it cuts. Every line in a clip comes straight from the script, so the timestamps can be trusted. What's being judged here is the *editorial* choice.
 

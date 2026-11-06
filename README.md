@@ -42,6 +42,10 @@ python run.py show/ --model gemini-3.5-flash
 The input screenplays are confidential and are **not** included in this repo (`*.txt` is git-ignored).
 
 ## Cost and scale
+Two tested provider profiles (only `.env` differs):
+- **Gemini profile:** `BATCH_EPISODES=5` → about 14 calls, about 90 s per 50-episode show (fits 20 requests/day).
+- **Groq profile** (`openai/gpt-oss-120b`, 8k tokens/minute): `BATCH_EPISODES=1`, `JUDGE_BATCH=6`, `MONTAGE_MAX_MOMENTS=40`, `REPAIR_BATCH=3`, `LLM_MIN_INTERVAL=40`, `LLM_EXTRA_BODY={"reasoning_effort": "low"}`, `LLM_FALLBACK_MODELS=openai/gpt-oss-20b` → about 60 calls, about 45 min.
+
 A 50-episode show (about 108k input tokens) takes **about 15 LLM calls and about 90 seconds**, which fits the Gemini free tier (20 requests/day per model). On a paid Flash-class model that's roughly a few cents per show. Responses are cached, so re-ranking after a rules change costs 0 calls.
 
 ## Docs
