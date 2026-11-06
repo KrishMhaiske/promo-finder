@@ -73,7 +73,7 @@ class LLM:
             self.cache_hits += 1
             return json.loads(cache_file.read_text(encoding="utf-8"))
 
-        retries = retries or max(5, 2 * len(self.chain))
+        retries = retries or max(8, 2 * len(self.chain))  # per-minute waits also use attempts
         last_err, idx = None, 0
         for attempt in range(retries):
             model = self.chain[idx % len(self.chain)]
@@ -93,6 +93,14 @@ class LLM:
                 head = msg[:80]
                 if any(c in head for c in ("401", "403", "API_KEY_INVALID", "PERMISSION_DENIED")):
                     raise RuntimeError(f"Bad API key / permission ({model}): {msg[:300]}") from e
+                if head.startswith("413") or "Request too large" in msg:
+                    # one request is bigger than the provider's tokens-per-minute cap: retrying can't help
+                    raise RuntimeError(f"Prompt too large for {model}'s per-minute token limit. Lower BATCH_EPISODES / "
+                                       f"JUDGE_BATCH / MONTAGE_MAX_MOMENTS / REPAIR_BATCH in .env. ({msg[:200]})") from e
+                if "json_validate_failed" in msg or "tool_use_failed" in msg:
+                    print(f"  [llm] {model} returned invalid JSON; retrying")
+                    time.sleep(2)
+                    continue
                 if any(c in head for c in ("400", "404", "NOT_FOUND", "INVALID_ARGUMENT")):
                     # this model won't work for us -> drop it from the chain for the rest of the run
                     print(f"  [llm] {model} unusable ({head}); removing from chain")
@@ -108,6 +116,13 @@ class LLM:
                     if not self.chain:
                         raise RuntimeError("All models in the chain hit their daily quota. "
                                            "Wait for the reset or set LLM_MODEL/LLM_FALLBACK_MODELS.") from e
+                    continue
+                m_wait = re.search(r"try again in (?:(\d+)m)?([\d.]+)s", msg)
+                if m_wait and "429" in head:
+                    # per-minute limit (e.g. Groq tokens/minute): the provider says exactly how long to wait
+                    wait = min(120.0, int(m_wait.group(1) or 0) * 60 + float(m_wait.group(2)) + 1)
+                    print(f"  [llm] {model} per-minute limit; waiting {wait:.0f}s as the provider asks")
+                    time.sleep(wait)
                     continue
                 overloaded = any(c in msg for c in ("503", "UNAVAILABLE", "timed out", "Timeout", "429", "RESOURCE_EXHAUSTED"))
                 if overloaded:
@@ -148,6 +163,8 @@ class LLM:
                     "temperature": temperature,
                     "response_format": {"type": "json_object"},
                     "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
+                    # provider-specific extras from .env, e.g. LLM_EXTRA_BODY={"reasoning_effort": "low"}
+                    **json.loads(os.getenv("LLM_EXTRA_BODY", "{}") or "{}"),
                 },
                 timeout=self.timeout,
             )

@@ -267,6 +267,21 @@ def build_montages(llm: LLM, moments: list[dict], all_eps: list[Episode], eps: d
                    title: str) -> tuple[dict, list[Candidate]]:
     if not moments:
         return {}, []
+    cap = int(os.getenv("MONTAGE_MAX_MOMENTS", "0") or 0)
+    if cap and len(moments) > cap:
+        # small-context providers: keep a capped set, round-robin across episodes, strongest types first
+        prio = {"hook": 0, "reveal": 1, "cliffhanger": 2, "emotional": 3}
+        by_ep: dict[int, list[dict]] = {}
+        for m in moments:
+            by_ep.setdefault(m["episode"], []).append(m)
+        queues = [sorted(v, key=lambda m: prio.get(str(m["type"]).lower(), 9)) for _, v in sorted(by_ep.items())]
+        picked: list[dict] = []
+        while len(picked) < cap and any(queues):
+            for q in queues:
+                if q and len(picked) < cap:
+                    picked.append(q.pop(0))
+        moments = sorted(picked, key=lambda m: (m["episode"], m["start"]))
+    lchars = int(os.getenv("MONTAGE_LOGLINE_CHARS", "400"))
     lines = []
     for m in moments:
         ev = _events_in(eps[m["episode"]], m["start"], m["end"])
@@ -274,7 +289,7 @@ def build_montages(llm: LLM, moments: list[dict], all_eps: list[Episode], eps: d
         lines.append(f'{m["id"]} | ep{m["episode"]} | {m["end"] - m["start"]:.1f}s | {m["type"]} | '
                      f'{m["description"]} | {said}')
     user = prompts.MONTAGE_USER.format(
-        title=title, loglines="\n".join(f"Ep {e.number}: {e.logline}" for e in all_eps),
+        title=title, loglines="\n".join(f"Ep {e.number}: {e.logline[:lchars]}" for e in all_eps),
         moments="\n".join(lines))
     raw = llm.json(prompts.MONTAGE_SYSTEM, user)
     raw = _as_obj(raw, "promos")
@@ -301,7 +316,8 @@ def build_montages(llm: LLM, moments: list[dict], all_eps: list[Episode], eps: d
     return raw, out
 
 
-def judge(llm: LLM, cands: list[Candidate], title: str, batch: int = 20) -> list[dict]:
+def judge(llm: LLM, cands: list[Candidate], title: str, batch: int | None = None) -> list[dict]:
+    batch = batch or int(os.getenv("JUDGE_BATCH", "20"))
     raws = []
     for i in range(0, len(cands), batch):
         chunk = cands[i:i + batch]
@@ -564,8 +580,13 @@ def repair_lengths(llm: LLM, cands: list[Candidate], eps: dict[int, Episode], lo
         items.append(f"### id={c.id} episode {ep.number} | measured length {c.duration:.1f}s (must be 20-60s)\n"
                      f"current segments: {segs}\nintended hook: {c.hook}\nintended cliffhanger: {c.cliffhanger}\n"
                      f"lines:\n{_render_window(ep, min(s.start for s in c.segments), max(s.end for s in c.segments))}")
-    raw = llm.json(prompts.REPAIR_SYSTEM, prompts.REPAIR_USER.format(items="\n\n".join(items)), temperature=0.2)
-    fixes = {str(f.get("id")): f for f in _as_obj(raw, "fixes").get("fixes", []) if isinstance(f, dict)}
+    rb = int(os.getenv("REPAIR_BATCH", "50"))
+    raw, fixes = [], {}
+    for i in range(0, len(items), rb):
+        r = llm.json(prompts.REPAIR_SYSTEM, prompts.REPAIR_USER.format(items="\n\n".join(items[i:i + rb])),
+                     temperature=0.2)
+        raw.append(r)
+        fixes.update({str(f.get("id")): f for f in _as_obj(r, "fixes").get("fixes", []) if isinstance(f, dict)})
     repaired = 0
     for c in broken:
         f = fixes.get(c.id)
