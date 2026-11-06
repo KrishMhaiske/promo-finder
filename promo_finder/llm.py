@@ -76,6 +76,9 @@ class LLM:
         retries = retries or max(8, 2 * len(self.chain))  # per-minute waits also use attempts
         last_err, idx = None, 0
         for attempt in range(retries):
+            if not self.chain:  # every model hit its daily limit earlier in this run
+                raise RuntimeError(f"No models left (daily limits hit: {self.exhausted}). "
+                                   "Add LLM_FALLBACK_MODELS in .env or wait for the reset; finished work is cached.")
             model = self.chain[idx % len(self.chain)]
             try:
                 self._throttle()
