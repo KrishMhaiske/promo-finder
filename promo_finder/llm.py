@@ -40,7 +40,11 @@ class LLM:
         self.timeout = float(os.getenv("LLM_TIMEOUT", "120"))
         self.models_used: dict[str, int] = {}
         self.exhausted: list[str] = []
-        self.api_key = api_key or os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        # each provider uses its own key, so switching providers never sends a key to the wrong service
+        if self.provider == "gemini":
+            self.api_key = api_key or os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        else:
+            self.api_key = api_key or os.getenv("LLM_API_KEY")
         self.base_url = (base_url or os.getenv("LLM_BASE_URL", "https://api.openai.com/v1")).rstrip("/")
         # free-tier Gemini Flash is ~10 requests/minute -> space calls out
         self.min_interval = float(min_interval if min_interval is not None else os.getenv("LLM_MIN_INTERVAL", "6.5"))
